@@ -1,0 +1,20 @@
+{
+    "mod_id": "SASed-Warp",
+    "author": "Sun Serega",
+    "name": "SASed Warp",
+    "description": "Junky ah SAS locking during warp",
+    "source": "https://github.com/SunSerega/SASed-Warp",
+    "version": "0.2.1",
+    "version_check": "",
+    "dependencies": [{
+        "id": "SpaceWarp",
+        "version": {
+            "min": "1.7.0",
+            "max": "*"
+        }
+    }],
+    "ksp2_version": {
+        "min": "0.2.0",
+        "max": "*"
+    }
+}
