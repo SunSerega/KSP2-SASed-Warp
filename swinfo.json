@@ -4,7 +4,7 @@
     "name": "SASed Warp",
     "description": "Junky ah SAS locking during warp",
     "source": "https://github.com/SunSerega/SASed-Warp",
-    "version": "0.2.1",
+    "version": "1.0",
     "version_check": "",
     "dependencies": [{
         "id": "SpaceWarp",
