@@ -20,7 +20,7 @@ using HarmonyLib;
 namespace SASedWarp
 {
 
-	[BepInPlugin("SASed-Warp", "SASed Warp", "1.0")]
+	[BepInPlugin("SASed-Warp", "SASed Warp", "1.1")]
 	[BepInDependency(SpaceWarpPlugin.ModGuid, SpaceWarpPlugin.ModVer)]
 	public class SASedWarpPlugin : BaseSpaceWarpPlugin
 	{

@@ -143,6 +143,46 @@ jobs:
                         owner, repo,
                         release_id: release.id,
                         name: `SASed Warp.zip`,
-                        data: await fs.promises.readFile(zip_path)
+                        data: await fs.promises.readFile(zip_path),
                     });
+        
+          - name: Install jq
+            uses: dcarbone/install-jq-action@v2.1.0
+        
+          - name: Set variables
+            run: |
+            
+                KSP2_ID=22407
+                
+                version=$(jq -r '.version' swinfo.json)
+                echo "Version is $version"
+                echo "version=$version" >> $GITHUB_ENV
+                echo "artifact_name=PatchManager-$version.zip" >> $GITHUB_ENV
+                echo "changelog=$(wget -qO- https://api.github.com/repos/$GITHUB_REPOSITORY/releases | jq '.[0].body' | tr -d \" | jq -Rr @uri)" >> $GITHUB_ENV
+                echo "LATEST_GAME_VERSION=$(curl "https://spacedock.info/api/$KSP2_ID/versions" | jq '.[0].friendly_version' | tr -d \")" >> $GITHUB_ENV
+        
+          - name: Upload to SpaceDock
+            run: |
+            
+                echo "::add-mask::${{ secrets.SPACEDOCK_PASSWORD }}"
+                
+                login_response=$(curl -F username=${{ secrets.SPACEDOCK_USER }} -F password="${{ secrets.SPACEDOCK_PASSWORD }}" -c ./cookies "https://spacedock.info/api/login")
+                login_errored=$(echo $login_response | jq .error)
+                if [ "$login_errored" == "true" ]; then
+                    echo "Login to space dock errored: $(echo $login_response | jq .reason)"
+                    exit 1
+                else
+                    echo "Login to space dock successful"
+                fi
+                
+                MOD_ID=3538
+                
+                result=$(curl -b ./cookies -F "version=${{ env.version }}" -F "changelog=${{ env.changelog }}" -F "game-version=${{ env.LATEST_GAME_VERSION }}" -F "notify-followers=yes" -F "zipball=@../SASed Warp.zip" "https://spacedock.info/api/mod/$MOD_ID/update")
+                errored=$(echo $result | jq .error)
+                if [ "$errored" == "true" ]; then
+                    echo "Upload to space dock errored: $(echo $result | jq .reason)"
+                    exit 1
+                else
+                    echo "Upload to space dock successful"
+                fi
         
