@@ -24,7 +24,10 @@
   </ItemGroup>
   
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy /y /d /f &quot;$(OutDir)$(AssemblyName).dll&quot; &quot;$(SolutionDir)&quot;" />
+    <Copy
+      SourceFiles="$(OutDir)$(AssemblyName).dll"
+      DestinationFolder="$(SolutionDir)"
+    />
   </Target>
   
 </Project>

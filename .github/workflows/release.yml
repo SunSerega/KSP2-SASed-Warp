@@ -1,0 +1,148 @@
+name: Create release zip
+
+on:
+    release:
+        types: [ "published", "edited" ]
+
+permissions:
+    contents: write
+
+jobs:
+    make_zip:
+        runs-on: ubuntu-latest
+        steps:
+        
+          - name: Checkout repository
+            uses: actions/checkout@v4
+        
+          - name: Build sln
+            run: |
+            
+                dotnet build "SASed Warp.sln" -c Release
+        
+          - name: Install npm stuff
+            run: |
+            
+                npm install archiver
+        
+          - name: Create release zip
+            uses: actions/github-script@main
+            with:
+                script: |
+                
+                    const fs = require('fs');
+                    const archiver = require('archiver');
+                    
+                    const zip_path = `../SASed Warp.zip`;
+                    
+                    function make_path_list(text_block) {
+                        return text_block.split('\n')
+                            .map(line => line.trim())
+                            .filter(line => line!="")
+                    }
+                    
+                    const included = make_path_list(`
+                        assets/images/icon.png
+                        localizations/0.csv
+                        LICENSE
+                        README.md
+                        SASed-Warp.dll
+                        swinfo.json
+                    `);
+                    const excluded = make_path_list(`
+                        .git
+                        .github
+                        assets/images/icon.xcf
+                        node_modules
+                        SASed Warp dll
+                        .gitignore
+                        install dev ver.bat
+                        package.json
+                        package-lock.json
+                        SASed Warp.sln
+                    `);
+                    
+                    function check_path(path, allow_null) {
+                        const is_included = included.includes(path);
+                        const is_excluded = excluded.includes(path);
+                        
+                        if (is_included != is_excluded)
+                            return is_included;
+                        
+                        if (is_included && is_excluded) {
+                            console.log(`Error: [${path}] is both included and excluded from release`);
+                            return false;
+                        }
+                        
+                        if (!allow_null)
+                            console.log(`Error: [${path}] is neither included nor excluded from release`);
+                        
+                        return null;
+                    }
+                    
+                    const output = fs.createWriteStream(zip_path);
+                    const archive = archiver('zip', { zlib: { level: 9 }});
+                    archive.pipe(output);
+                    
+                    output.on('close', function () {
+                        console.log(archive.pointer() + ' total bytes');
+                        console.log('Archiver has been finalized and the output file descriptor has closed.');
+                    });
+                    
+                    archive.on('error', err=>{
+                        console.log("archiver error:");
+                        throw err;
+                    });
+                    
+                    async function add_file(path, incl_state) {
+                        if (incl_state === null)
+                            incl_state = check_path(path, false);
+                        if (incl_state === false) return;
+                        
+                        const stream = fs.createReadStream(path);
+                        const archive_path = `BepInEx/plugins/SASed Warp/${path}`;
+                        console.log(`Adding file [${archive_path}]`);
+                        archive.append(stream, { name: archive_path });
+                        
+                    }
+                    
+                    async function add_dir(path, incl_state) {
+                        if (incl_state === null)
+                            incl_state = check_path(path, true);
+                        if (incl_state === false) return;
+                        
+                        if (incl_state === true) {
+                            const archive_path = `BepInEx/plugins/SASed Warp/${path}/`;
+                            console.log(`Adding folder [${archive_path}]`);
+                            archive.append(null, { name: archive_path });
+                        }
+                        
+                        for (let sub_path of await fs.promises.readdir(path)) {
+                            const full_sub_path = path==="." ? sub_path : `${path}/${sub_path}`;
+                            const stats = await fs.promises.stat(full_sub_path);
+                            
+                            if (stats.isDirectory())
+                                await add_dir(full_sub_path, incl_state);
+                            else if (stats.isFile())
+                                await add_file(full_sub_path, incl_state);
+                            else
+                                console.log(`WTH is [${full_sub_path}] ???`);
+                            
+                        }
+                        
+                    }
+                    
+                    await add_dir(".", null);
+                    
+                    await archive.finalize();
+                    
+                    const { repo: { owner, repo } } = context;
+                    const release = context.payload.release;
+                    
+                    await github.rest.repos.uploadReleaseAsset({
+                        owner, repo,
+                        release_id: release.id,
+                        name: `SASed Warp.zip`,
+                        data: await fs.promises.readFile(zip_path)
+                    });
+        
