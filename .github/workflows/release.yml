@@ -53,6 +53,8 @@ jobs:
                         .git
                         .github
                         assets/images/icon.xcf
+                        assets/images/icon2400.xcf
+                        assets/images/icon2400.png
                         node_modules
                         SASed Warp dll
                         .gitignore
