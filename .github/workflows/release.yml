@@ -1,4 +1,4 @@
-name: Create release zip
+﻿name: Create release zip
 
 on:
     release:
@@ -63,10 +63,15 @@ jobs:
                         package-lock.json
                         SASed Warp.sln
                     `);
+                    used_incl_excl = [];
                     
                     function check_path(path, allow_null) {
                         const is_included = included.includes(path);
                         const is_excluded = excluded.includes(path);
+                        
+                        if (is_included || is_excluded) {
+                            used_incl_excl.push(path);
+                        }
                         
                         if (is_included != is_excluded)
                             return is_included;
@@ -135,6 +140,14 @@ jobs:
                     }
                     
                     await add_dir(".", null);
+                    for (let path of included) {
+                        if (!used_incl_excl.includes(path))
+                            console.log(`WARNING: Unused include "${path}"`);
+                    }
+                    for (let path of excluded) {
+                        if (!used_incl_excl.includes(path))
+                            console.log(`WARNING: Unused exclude "${path}"`);
+                    }
                     
                     await archive.finalize();
                     
@@ -154,37 +167,24 @@ jobs:
           - name: Set variables
             run: |
             
-                KSP2_ID=22407
+                echo "$(wget -qO- https://api.github.com/repos/$GITHUB_REPOSITORY/releases | jq '.[0].body')" > changelog.md
                 
                 version=$(jq -r '.version' swinfo.json)
+                #read -r version < changelog.md
                 echo "Version is $version"
                 echo "version=$version" >> $GITHUB_ENV
-                echo "artifact_name=PatchManager-$version.zip" >> $GITHUB_ENV
-                echo "changelog=$(wget -qO- https://api.github.com/repos/$GITHUB_REPOSITORY/releases | jq '.[0].body' | tr -d \" | jq -Rr @uri)" >> $GITHUB_ENV
-                echo "LATEST_GAME_VERSION=$(curl "https://spacedock.info/api/$KSP2_ID/versions" | jq '.[0].friendly_version' | tr -d \")" >> $GITHUB_ENV
+        
+          - name:  Add mask
+            run: echo "::add-mask::${{ secrets.SPACEDOCK_PASSWORD }}"
         
           - name: Upload to SpaceDock
-            run: |
-            
-                echo "::add-mask::${{ secrets.SPACEDOCK_PASSWORD }}"
-                
-                login_response=$(curl -F username=${{ secrets.SPACEDOCK_USER }} -F password="${{ secrets.SPACEDOCK_PASSWORD }}" -c ./cookies "https://spacedock.info/api/login")
-                login_errored=$(echo $login_response | jq .error)
-                if [ "$login_errored" == "true" ]; then
-                    echo "Login to space dock errored: $(echo $login_response | jq .reason)"
-                    exit 1
-                else
-                    echo "Login to space dock successful"
-                fi
-                
-                MOD_ID=3538
-                
-                result=$(curl -b ./cookies -F "version=${{ env.version }}" -F "changelog=${{ env.changelog }}" -F "game-version=${{ env.LATEST_GAME_VERSION }}" -F "notify-followers=yes" -F "zipball=@../SASed Warp.zip" "https://spacedock.info/api/mod/$MOD_ID/update")
-                errored=$(echo $result | jq .error)
-                if [ "$errored" == "true" ]; then
-                    echo "Upload to space dock errored: $(echo $result | jq .reason)"
-                    exit 1
-                else
-                    echo "Upload to space dock successful"
-                fi
+            uses: KSP2Community/spacedock-upload@v1.0.0
+            with:
+                username: ${{ secrets.SPACEDOCK_USER }}
+                password: ${{ secrets.SPACEDOCK_PASSWORD }}
+                game_id: 22407
+                mod_id: 3538
+                version: ${{ env.version }}
+                zipball: ../SASed Warp.zip
+                changelog: ./changelog.md
         
