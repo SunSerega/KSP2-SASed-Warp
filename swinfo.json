@@ -9,7 +9,7 @@
     "dependencies": [{
         "id": "SpaceWarp",
         "version": {
-            "min": "1.9.3",
+            "min": "1.9.4",
             "max": "*"
         }
     }],
