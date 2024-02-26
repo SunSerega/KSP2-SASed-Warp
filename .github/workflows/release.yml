@@ -167,7 +167,7 @@ jobs:
           - name: Set variables
             run: |
             
-                echo "$(wget -qO- https://api.github.com/repos/$GITHUB_REPOSITORY/releases | jq '.[0].body')" > changelog.md
+                echo "$(wget -qO- https://api.github.com/repos/$GITHUB_REPOSITORY/releases | jq '.[0].body' | tr -d '\r')" > changelog.md
                 
                 version=$(jq -r '.version' swinfo.json)
                 #read -r version < changelog.md
