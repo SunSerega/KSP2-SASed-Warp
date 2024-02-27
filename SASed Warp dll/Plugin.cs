@@ -24,7 +24,7 @@ using HarmonyLib;
 namespace SASedWarp
 {
 
-	[BepInPlugin("SASed-Warp", "SASed Warp", "2.0")]
+	[BepInPlugin("SASed-Warp", "SASed Warp", "2.1")]
 	[BepInDependency(SpaceWarpPlugin.ModGuid, SpaceWarpPlugin.ModVer)]
 	public class SASedWarpPlugin : BaseSpaceWarpPlugin
 	{
@@ -114,7 +114,9 @@ namespace SASedWarp
 			if (GameManager.Instance.Game.ViewController.TimeWarp.IsPhysicsTimeWarp) return;
 
 			var vessel = GameManager.Instance.Game.ViewController.GetActiveSimVessel(true);
-			if (vessel.flightCtrlState.mainThrottle==0) return;
+			// Made it more uniform. Maybe player will need SAS during warp without thrust
+			//if (vessel.flightCtrlState.mainThrottle==0) return;
+
 			// "left"??? it somehow spin-stabilizes direction during warp, lol
 			// "up" only works for ~90 degrees of orbit
 			// And "forward", the most expected thing, rotates 90 degrees up from targ_forward. But unlike "up" it doesn't glich out after a while
@@ -124,11 +126,17 @@ namespace SASedWarp
 			var autopilot = vessel.Autopilot;
 			var telemetry = (TelemetryComponent)autopilot.GetType().GetField("_telemetry", AllBF).GetValue(autopilot);
 			Vector targ_forward;
+			//TODO Normal and Radial switch to North and Up when near atmosphere,
+			// - But this keeps using space directions
+			// - How do I even check for that?
+			// - Ah, player can click on groud/orbit vel to change that
 			switch (autopilot.AutopilotMode)
 			{
 				case AutopilotMode.StabilityAssist:
-				case AutopilotMode.Maneuver:
 					return;
+				case AutopilotMode.Maneuver:
+					targ_forward = telemetry.ManeuverDirection;
+					break;
 				case AutopilotMode.Prograde:
 					targ_forward = telemetry.OrbitMovementPrograde;
 					break;
@@ -161,7 +169,7 @@ namespace SASedWarp
 				default:
 					throw new NotImplementedException(autopilot.AutopilotMode.ToString());
 			}
-			
+
 			//Logger.LogDebug($"Vector diff sqr mag={(curr_forward - targ_forward).sqrMagnitude}");
 			//if ((curr_forward - targ_forward).sqrMagnitude==0) return; //TODO <0.01
 
@@ -176,6 +184,8 @@ namespace SASedWarp
 			//Logger.LogDebug($"Using rotation={rotation.localRotation}");
 			vessel.transform.UpdateRotation(rotation);
 
+			// Disabled this check above, but "HandleOrbitalPhysicsUnderThrustStart" should not be called without any thrust
+			if (vessel.flightCtrlState.mainThrottle==0) return;
 			// Recalculate the trajectory using new vessel rotation
 			//var sw = System.Diagnostics.Stopwatch.StartNew();
 			vessel.GetType().GetMethod("HandleOrbitalPhysicsUnderThrustStart", AllBF).Invoke(vessel, null);
