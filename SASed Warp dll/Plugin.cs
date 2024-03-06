@@ -37,8 +37,6 @@ namespace SASedWarp
 
 		public static QuaternionD FixedToLocalRotation(this KSP.Api.ICoordinateSystem new_cs, KSP.Sim.Rotation r)
 		{
-			var a = r.localRotation;
-			a.xyz = a * a.xyz;
 			var new_xyz = new_cs.ToLocalVector(new KSP.Sim.Vector(r.coordinateSystem, r.localRotation.xyz));
 			return new QuaternionD(new_xyz, r.localRotation.w);
 		}
