@@ -1,30 +1,32 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  
-  <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
-    <RootNamespace>SASedWarp</RootNamespace>
-    <AssemblyName>SASed-Warp</AssemblyName>
-    <Nullable>enable</Nullable>
-    <RestoreAdditionalProjectSources>
-      https://nuget.spacewarp.org/v3/index.json
-    </RestoreAdditionalProjectSources>
-    <NoWarn>$(NoWarn);CS0436</NoWarn>
-  </PropertyGroup>
-  
-  <ItemGroup>
-    <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
-    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1" PrivateAssets="all" />
-    <PackageReference Include="BepInEx.Core" Version="5.*" />
-    <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" />
-    <PackageReference Include="HarmonyX" Version="2.12.0" />
-    <PackageReference Include="SpaceWarp" Version="1.9.3" />
-    <PackageReference Include="UnityEngine.Modules" Version="2022.3.5" IncludeAssets="compile" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="KerbalSpaceProgram2.GameLibs" Version="0.2.1" PrivateAssets="all" />
-  </ItemGroup>
-  
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Copy SourceFiles="$(OutDir)$(AssemblyName).dll" DestinationFolder="$(SolutionDir)" />
-  </Target>
-  
+	
+	<PropertyGroup>
+		<TargetFramework>netstandard2.1</TargetFramework>
+		<RootNamespace>SASedWarp</RootNamespace>
+		<AssemblyName>SASed-Warp</AssemblyName>
+		<Product>SASed Warp</Product>
+		<Version>2.2</Version>
+		<Nullable>enable</Nullable>
+		<RestoreAdditionalProjectSources>
+			https://nuget.spacewarp.org/v3/index.json
+		</RestoreAdditionalProjectSources>
+		<NoWarn>$(NoWarn);CS0436</NoWarn>
+	</PropertyGroup>
+	
+	<ItemGroup>
+		<PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
+		<PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1" PrivateAssets="all" />
+		<PackageReference Include="BepInEx.Core" Version="5.*" />
+		<PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" />
+		<PackageReference Include="HarmonyX" Version="2.12.0" />
+		<PackageReference Include="SpaceWarp" Version="1.9.3" />
+		<PackageReference Include="UnityEngine.Modules" Version="2022.3.5" IncludeAssets="compile" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="KerbalSpaceProgram2.GameLibs" Version="0.2.1" PrivateAssets="all" />
+	</ItemGroup>
+	
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Copy SourceFiles="$(OutDir)$(AssemblyName).dll" DestinationFolder="$(SolutionDir)" />
+	</Target>
+	
 </Project>
