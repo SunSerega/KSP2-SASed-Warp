@@ -2,9 +2,9 @@
     "mod_id": "SASed-Warp",
     "author": "Sun Serega",
     "name": "SASed Warp",
-    "description": "Junky ah SAS locking during warp",
+    "description": "SAS locking during warp (+ thrust on rails fix)",
     "source": "https://github.com/SunSerega/SASed-Warp",
-    "version": "2.1",
+    "version": "2.2",
     "version_check": "",
     "dependencies": [{
         "id": "SpaceWarp",

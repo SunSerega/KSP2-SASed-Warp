@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 
 using BepInEx;
+using BepInEx.Configuration;
 
 using SpaceWarp;
 using SpaceWarp.API.Mods;
@@ -24,14 +25,52 @@ using HarmonyLib;
 namespace SASedWarp
 {
 
-	[BepInPlugin("SASed-Warp", "SASed Warp", "2.1")]
+	internal static class Ext
+	{
+
+		public static KSP.Sim.Rotation Normalized(this KSP.Sim.Rotation rot)
+		{
+			var lrot = rot.localRotation;
+			lrot.Normalize();
+			return new KSP.Sim.Rotation(rot.coordinateSystem, lrot);
+		}
+
+		public static QuaternionD FixedToLocalRotation(this KSP.Api.ICoordinateSystem new_cs, KSP.Sim.Rotation r)
+		{
+			var a = r.localRotation;
+			a.xyz = a * a.xyz;
+			var new_xyz = new_cs.ToLocalVector(new KSP.Sim.Vector(r.coordinateSystem, r.localRotation.xyz));
+			return new QuaternionD(new_xyz, r.localRotation.w);
+		}
+
+	}
+
+	[BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
 	[BepInDependency(SpaceWarpPlugin.ModGuid, SpaceWarpPlugin.ModVer)]
 	public class SASedWarpPlugin : BaseSpaceWarpPlugin
 	{
 		private bool in_valid_game_state = false;
 		private bool menu_open = false;
 
-		public SASedWarpPlugin() { }
+		private readonly ConfigEntry<bool> c_direction_lines, c_h_to_snap;
+
+		public SASedWarpPlugin()
+		{
+			c_direction_lines = Config.Bind(
+				MyPluginInfo.PLUGIN_NAME,
+				"Funny debug lines",
+				false,
+				"Red is up and then forward in control part space\n"+
+				"Green is up and then forward in vessel space\n"+
+				"Blue is orbinal speed prograde and then orbital speed radial out"
+			);
+			c_h_to_snap = Config.Bind(
+				MyPluginInfo.PLUGIN_NAME,
+				"Press H to snap",
+				false,
+				"Only activate direction change (to SAS during warp) once for every press of H key, instead of on every update"
+			);
+		}
 
 		#region Init
 
@@ -89,6 +128,50 @@ namespace SASedWarp
 				}
 			);
 
+			UnityEngine.Camera.onPreRender += cam =>
+			{
+				if (!c_direction_lines.Value) return;
+				if (!in_valid_game_state) return;
+				if (!menu_open) return;
+
+				using var c = Shapes.Draw.Command(cam, UnityEngine.Rendering.CameraEvent.AfterImageEffectsOpaque);
+
+				var vessel = GameManager.Instance.Game.ViewController.GetActiveSimVessel(true);
+				var telemetry = vessel.SimulationObject.Telemetry;
+				var frame = vessel.transform.coordinateSystem;
+				var pos = frame.ToLocalPosition(vessel.CenterOfMass);
+				var r = 2 * GameManager.Instance.Game.SpaceSimulation.ModelViewMap.FromModel(vessel.SimulationObject).Vessel.BoundingSphere.radius;
+
+				void DrawDir(Position p, Vector v1, Vector v2, UnityEngine.Color c)
+				{
+					var p0 = p;
+					var p1 = p0 + v1*r;
+					var p2 = p1 + v2*r*0.1;
+					Shapes.Draw.Line(frame.ToLocalPosition(p0), frame.ToLocalPosition(p1), r*0.01f, Shapes.LineEndCap.Square, c);
+					Shapes.Draw.Line(frame.ToLocalPosition(p1), frame.ToLocalPosition(p2), r*0.01f, Shapes.LineEndCap.Square, c);
+					//Logger.LogDebug($"{c}: {v1.magnitude}");
+				}
+
+				DrawDir(vessel.ControlTransform.Position, vessel.ControlTransform.up, vessel.ControlTransform.forward, UnityEngine.Color.red);
+				DrawDir(vessel.CenterOfMass, vessel.transform.up, vessel.transform.forward, UnityEngine.Color.green);
+				DrawDir(vessel.CenterOfMass, telemetry.OrbitMovementPrograde, telemetry.OrbitMovementRadialOut, UnityEngine.Color.blue);
+
+				//DrawDir(vessel.CenterOfMass, new Vector(vessel.ControlTransform.Rotation.coordinateSystem, vessel.transform.Rotation.coordinateSystem.ToLocalVector(telemetry.OrbitMovementPrograde)), default, UnityEngine.Color.yellow);
+				//DrawDir(vessel.CenterOfMass, new Vector(vessel.transform.Rotation.coordinateSystem, vessel.ControlTransform.Rotation.coordinateSystem.ToLocalVector(telemetry.OrbitMovementPrograde)), default, UnityEngine.Color.cyan);
+
+			};
+
+			UnityEngine.Camera.onPostRender += cam =>
+			{
+				if (!c_direction_lines.Value) return;
+				if (!in_valid_game_state) return;
+				if (!menu_open) return;
+
+				// HUD (the mod) used this, but it's private
+				//Shapes.DrawCommand.OnPostRenderBuiltInRP(cam);
+
+			};
+
 			VesselComponent_HandleOrbitalPhysicsUnderThrustStart_Patch.log = Logger;
 			Harmony.CreateAndPatchAll(typeof(SASedWarpPlugin).Assembly);
 
@@ -106,103 +189,136 @@ namespace SASedWarp
 
 		private static readonly BindingFlags AllBF = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
 
+		private bool h_down = false;
+
 		public void Update()
 		{
+
+			#region Checks and init
+
+			var old_h_down = h_down;
+			h_down = UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.H);
+			if (c_h_to_snap.Value)
+			{
+				if (h_down || !old_h_down) return;
+			}
+
 			if (!in_valid_game_state) return;
 			if (!menu_open) return;
 			if (!GameManager.Instance.Game.ViewController.TimeWarp.IsWarping) return;
 			if (GameManager.Instance.Game.ViewController.TimeWarp.IsPhysicsTimeWarp) return;
-
 			var vessel = GameManager.Instance.Game.ViewController.GetActiveSimVessel(true);
-			// Made it more uniform. Maybe player will need SAS during warp without thrust
-			//if (vessel.flightCtrlState.mainThrottle==0) return;
-
-			// "left"??? it somehow spin-stabilizes direction during warp, lol
-			// "up" only works for ~90 degrees of orbit
-			// And "forward", the most expected thing, rotates 90 degrees up from targ_forward. But unlike "up" it doesn't glich out after a while
-			// Makes me question if I actually know linear algebra... But prob just bad naming of methods
-			var curr_forward = vessel.transform.left;
 
 			var autopilot = vessel.Autopilot;
-			var telemetry = (TelemetryComponent)autopilot.GetType().GetField("_telemetry", AllBF).GetValue(autopilot);
-			Vector targ_forward;
-			//TODO Normal and Radial switch to North and Up when near atmosphere,
-			// - But this keeps using space directions
-			// - How do I even check for that?
-			// - Ah, player can click on groud/orbit vel to change that
-			switch (autopilot.AutopilotMode)
-			{
-				case AutopilotMode.StabilityAssist:
-					return;
-				case AutopilotMode.Maneuver:
-					targ_forward = telemetry.ManeuverDirection;
-					break;
-				case AutopilotMode.Prograde:
-					targ_forward = telemetry.OrbitMovementPrograde;
-					break;
-				case AutopilotMode.Retrograde:
-					targ_forward = telemetry.OrbitMovementRetrograde;
-					break;
-				case AutopilotMode.Normal:
-					targ_forward = telemetry.OrbitMovementNormal;
-					break;
-				case AutopilotMode.Antinormal:
-					targ_forward = telemetry.OrbitMovementAntiNormal;
-					break;
-				case AutopilotMode.RadialIn:
-					targ_forward = telemetry.OrbitMovementRadialIn;
-					break;
-				case AutopilotMode.RadialOut:
-					targ_forward = telemetry.OrbitMovementRadialOut;
-					break;
-				case AutopilotMode.Target:
-					targ_forward = telemetry.TargetDirection;
-					break;
-				case AutopilotMode.AntiTarget:
-					targ_forward = telemetry.AntiTargetDirection;
-					break;
-					//TODO What are these?
-				//case AutopilotMode.Navigation:
-				//	break;
-				//case AutopilotMode.Autopilot:
-				//	break;
-				default:
-					throw new NotImplementedException(autopilot.AutopilotMode.ToString());
-			}
+			if (autopilot.AutopilotMode == AutopilotMode.StabilityAssist) return;
+			var telemetry = vessel.SimulationObject.Telemetry;
 
-			//Logger.LogDebug($"Vector diff sqr mag={(curr_forward - targ_forward).sqrMagnitude}");
-			//if ((curr_forward - targ_forward).sqrMagnitude==0) return; //TODO <0.01
+			#endregion
 
-			// I would expect .FromTo to do the thing
-			// But besides rotating the craft, it also makes camera wonky
-			// And .LookRotation just doesn't do that
-			//var rotation = Rotation.FromTo(curr_forward, targ_forward);
-			var rotation = Rotation.LookRotation(curr_forward, targ_forward);
-			
-			//Logger.LogDebug($"Rotating from forward={curr_forward.vector}");
-			//Logger.LogDebug($"Towards prograde={curr_forward.coordinateSystem.ToLocalVector(targ_forward)}");
-			//Logger.LogDebug($"Using rotation={rotation.localRotation}");
-			vessel.transform.UpdateRotation(rotation);
+			#region Find the vector representing the SAS direction
 
-			// Disabled this check above, but "HandleOrbitalPhysicsUnderThrustStart" should not be called without any thrust
-			if (vessel.flightCtrlState.mainThrottle==0) return;
-			// Recalculate the trajectory using new vessel rotation
+			Vector targ_forward = autopilot.AutopilotMode switch {
+				AutopilotMode.Maneuver => telemetry.ManeuverDirection,
+				AutopilotMode.Target => telemetry.TargetDirection,
+				AutopilotMode.AntiTarget => telemetry.AntiTargetDirection,
+				AutopilotMode.Prograde => vessel.speedMode switch {
+					SpeedDisplayMode.Orbit => telemetry.OrbitMovementPrograde,
+					SpeedDisplayMode.Target => telemetry.TargetPrograde,
+					SpeedDisplayMode.Surface => telemetry.SurfaceMovementPrograde,
+					_ => throw new NotImplementedException($"{autopilot.AutopilotMode} => {vessel.speedMode}")
+				},
+				AutopilotMode.Retrograde => vessel.speedMode switch {
+					SpeedDisplayMode.Orbit => telemetry.OrbitMovementRetrograde,
+					SpeedDisplayMode.Target => telemetry.TargetRetrograde,
+					SpeedDisplayMode.Surface => telemetry.SurfaceMovementRetrograde,
+					_ => throw new NotImplementedException($"{autopilot.AutopilotMode} => {vessel.speedMode}")
+				},
+				AutopilotMode.RadialIn => vessel.speedMode switch {
+					SpeedDisplayMode.Orbit => telemetry.OrbitMovementRadialIn,
+					SpeedDisplayMode.Target => telemetry.HorizonDown,
+					SpeedDisplayMode.Surface => telemetry.HorizonDown,
+					_ => throw new NotImplementedException($"{autopilot.AutopilotMode} => {vessel.speedMode}")
+				},
+				AutopilotMode.RadialOut => vessel.speedMode switch {
+					SpeedDisplayMode.Orbit => telemetry.OrbitMovementRadialOut,
+					SpeedDisplayMode.Target => telemetry.HorizonUp,
+					SpeedDisplayMode.Surface => telemetry.HorizonUp,
+					_ => throw new NotImplementedException($"{autopilot.AutopilotMode} => {vessel.speedMode}")
+				},
+				AutopilotMode.Normal => vessel.speedMode switch {
+					SpeedDisplayMode.Orbit => telemetry.OrbitMovementNormal,
+					SpeedDisplayMode.Target => telemetry.HorizonNorth,
+					SpeedDisplayMode.Surface => telemetry.HorizonNorth,
+					_ => throw new NotImplementedException($"{autopilot.AutopilotMode} => {vessel.speedMode}")
+				},
+				AutopilotMode.Antinormal => vessel.speedMode switch {
+					SpeedDisplayMode.Orbit => telemetry.OrbitMovementAntiNormal,
+					SpeedDisplayMode.Target => telemetry.HorizonSouth,
+					SpeedDisplayMode.Surface => telemetry.HorizonSouth,
+					_ => throw new NotImplementedException($"{autopilot.AutopilotMode} => {vessel.speedMode}")
+				},
+				// What are these?
+				//AutopilotMode.Navigation =>
+				//AutopilotMode.Autopilot =>
+				_ => throw new NotImplementedException($"{autopilot.AutopilotMode}")
+			};
+
+			#endregion
+
+			#region Compute rotation
+
+			// Magic! Don't remove!
+			// (it updates some internal state, without that the last .UpdateRotation call would be ingored by this code and ship would continue to rotate)
+			vessel.ControlTransform.Position.coordinateSystem.ToLocalVector(vessel.ControlTransform.up);
+
+			// "vessel.transform.coordinateSystem" is the non-warp coordinate system
+			var vcs = vessel.transform.up.coordinateSystem;
+			// "vessel.ControlTransform.up.coordinateSystem" is outdated after the first rotation of this mod during warp
+			var ccs = vessel.ControlTransform.coordinateSystem;
+
+			// First find the rotation that would align the control part with the target direction
+			var ctrl_rot = Rotation.FromTo(ccs.up, targ_forward).Normalized();
+			// And apply it to vessel looking directions
+			var new_forward = new Vector(vcs, (vcs.FixedToLocalRotation(ctrl_rot) * vcs.forward.vector).normalized);
+			var new_up = new Vector(vcs, (vcs.FixedToLocalRotation(ctrl_rot) * vcs.up.vector).normalized);
+
+			// Then use changed looking directions to create a new look rotation
+			// Very important to normalize here!
+			// Otherwise the camera starts floating away
+			var final_rot = Rotation.LookRotation(new_forward, new_up).Normalized();
+
+			// This overrides the rotation, rather than adding to the current one
+			vessel.transform.UpdateRotation(final_rot);
+
+			#endregion
+
+			#region Punch the game to apply new rotation
+
+			// "HandleOrbitalPhysicsUnderThrustStart" should not be called without any thrust
+			// (otherwise it sets internal thrust to 100%, but uses no fuel)
+			//if (vessel.flightCtrlState.mainThrottle==0) return;
+			if (!vessel.IsUnderEngineThrust()) return;
+			//if (!vessel.IsOrbitalPhysicsUnderThrustActive) return;
+			// Recalculate the thrust-on-rails trajectory using new vessel rotation
 			//var sw = System.Diagnostics.Stopwatch.StartNew();
 			vessel.GetType().GetMethod("HandleOrbitalPhysicsUnderThrustStart", AllBF).Invoke(vessel, null);
 			//Logger.LogDebug($"Recalculated thrust-warp trajectory in {sw.Elapsed}");
 
 			if (vessel.IsOrbitalPhysicsUnderThrustActive) return;
+			Logger.LogError("This shouldn't happen, I disabled the check that turns off thrust-on-rails");
 			// If not, there was an error in KSP code (look in Alt+C),
 			// at least cancel thrust so it doesn't burn propelant
 			var vehicle = (VesselVehicle)GameManager.Instance.Game.ViewController.GetActiveVehicle(true);
 			vehicle.AtomicSet(mainThrottle: 0, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-			//TODO White box instead of proper message?
+			// Hmmm, white box instead of proper message?
 			GameManager.Instance.Game.Notifications.ProcessNotification(new NotificationData
 			{
 				Tier = NotificationTier.Alert,
 				Primary = new NotificationLineItemData { LocKey = "SASedWarp/MathBug" }
 			});
+
+			#endregion
 
 		}
 
@@ -256,7 +372,7 @@ namespace SASedWarp
 			foreach (var instr in q)
 				yield return instr;
 			if (founc_c<expected_times.Start.Value || founc_c>expected_times.End.Value)
-				throw new InvalidOperationException($"Found expected IL {founc_c} times");
+				throw new InvalidOperationException($"Found expected IL {founc_c} times, instead of {expected_times}");
 		}
 
 	}
@@ -271,7 +387,7 @@ namespace SASedWarp
 		{
 			var need_err = pos_err>=0.01 || vel_err>=0.01;
 			if (need_err) log.LogDebug($"pos_err={pos_err}, vel_err={vel_err}");
-			return false; //TODO For now turned off completely
+			return false; // For now turned off completely
 		}
 
 		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> old_body)

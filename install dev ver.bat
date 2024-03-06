@@ -1,8 +1,13 @@
 ﻿
 
 
-RMDIR "G:\0Games\Kerbal Space Program 2\BepInEx\plugins\SASed Warp" /S /Q
+IF NOT DEFINED KSP2DIR (
+    echo Error: KSP2DIR is not defined.
+    exit /b 1
+)
+
+RMDIR "%KSP2DIR%\BepInEx\plugins\SASed Warp" /S /Q
 @setlocal enableextensions
-mklink /J "G:\0Games\Kerbal Space Program 2\BepInEx\plugins\SASed Warp" "%~dp0"
+mklink /J "%KSP2DIR%\BepInEx\plugins\SASed Warp" "%~dp0"
 
 
