@@ -5,11 +5,11 @@
 using System;
 
 using System.Reflection;
-using System.Reflection.Emit;
 
-using System.Linq;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
+using KSP.Sim;
+using KSP.Sim.impl;
+using KSP.Game;
+using KSP.Messages;
 
 using BepInEx;
 using BepInEx.Configuration;
@@ -18,11 +18,6 @@ using SpaceWarp;
 using SpaceWarp.API.Mods;
 using SpaceWarp.API.Assets;
 using SpaceWarp.API.UI.Appbar;
-
-using KSP.Sim;
-using KSP.Sim.impl;
-using KSP.Game;
-using KSP.Messages;
 
 using HarmonyLib;
 
@@ -159,8 +154,7 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
 			//Shapes.DrawCommand.OnPostRenderBuiltInRP(cam);
 
 		};
-
-		VesselComponent_HandleOrbitalPhysicsUnderThrustStart_Patch.log = Logger;
+		
 		Harmony.CreateAndPatchAll(typeof(SASedWarpPlugin).Assembly);
 
 	}
@@ -168,7 +162,7 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
 	#endregion
 
 	#region Update
-
+	
 	private static readonly BindingFlags AllBF = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
 
 	private bool h_down = false;
@@ -314,107 +308,5 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
 	#endregion
 
 }
-internal static class TranspilerHelper
-{
-
-	public sealed class ILLookupKey
-	{
-		public OpCode OpCode { get; set; }
-		public object? Operand { get; set; } = null;
-	}
-
-	public static IEnumerable<CodeInstruction> Replace(
-		IEnumerable<CodeInstruction> old_body,
-		ILLookupKey[] lookup, Func<IReadOnlyCollection<CodeInstruction>, IEnumerable<CodeInstruction>> repl,
-		Range expected_times
-	)
-	{
-		var q = new Queue<CodeInstruction>(lookup.Length);
-		var founc_c = 0;
-
-		//var ind = -1;
-		foreach (var instr in old_body)
-		{
-			//++ind;
-			//VesselComponent_HandleOrbitalPhysicsUnderThrustStart_Patch.log.LogInfo($"[{ind}] {instr.opcode}: {instr.operand}");
-
-			q.Enqueue(instr);
-			if (q.Count < lookup.Length) continue;
-
-			if (q.Zip(lookup, (instr, lookup) =>
-			{
-				if (instr.opcode != lookup.OpCode) return false;
-				if (lookup.Operand is null) return true;
-				if (!Equals(instr.operand, lookup.Operand)) return false;
-				return true;
-			}).All(b => b))
-			{
-				founc_c += 1;
-				foreach (var mod_instr in repl(q))
-					yield return mod_instr;
-				q.Clear();
-				continue;
-			}
-
-			yield return q.Dequeue();
-		}
-		foreach (var instr in q)
-			yield return instr;
-		if (founc_c<expected_times.Start.Value || founc_c>expected_times.End.Value)
-			throw new InvalidOperationException($"Found expected IL {founc_c} times, instead of {expected_times}");
-	}
-
-}
-
-[HarmonyPatch(typeof(VesselComponent), "HandleOrbitalPhysicsUnderThrustStart", MethodType.Normal)]
-public static class VesselComponent_HandleOrbitalPhysicsUnderThrustStart_Patch
-{
-	private static readonly ConcurrentDictionary<VesselComponent, byte> all_instances = new ConcurrentDictionary<VesselComponent, byte>();
-	public static BepInEx.Logging.ManualLogSource log = null!; // set in SASedWarpPlugin.OnInitialized
-
-	private static bool CheckNeedRoundingError(double pos_err, double vel_err)
-	{
-		var need_err = pos_err>=0.01 || vel_err>=0.01;
-		if (need_err) log.LogDebug($"pos_err={pos_err}, vel_err={vel_err}");
-		return false; // For now turned off completely
-	}
-
-	public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> old_body)
-	{
-		var prop_get_sqrMagnitude = typeof(Vector3d).GetProperty("sqrMagnitude").GetGetMethod();
-		var res = TranspilerHelper.Replace(old_body,
-			new TranspilerHelper.ILLookupKey[]
-			{
-					new TranspilerHelper.ILLookupKey{ OpCode = OpCodes.Ldloca_S },
-					new TranspilerHelper.ILLookupKey{ OpCode = OpCodes.Call, Operand = prop_get_sqrMagnitude },
-					new TranspilerHelper.ILLookupKey{ OpCode = OpCodes.Ldc_R8 },
-					new TranspilerHelper.ILLookupKey{ OpCode = OpCodes.Bge_Un },
-					new TranspilerHelper.ILLookupKey{ OpCode = OpCodes.Ldloca_S },
-					new TranspilerHelper.ILLookupKey{ OpCode = OpCodes.Call, Operand = prop_get_sqrMagnitude },
-					new TranspilerHelper.ILLookupKey{ OpCode = OpCodes.Ldc_R8 },
-					new TranspilerHelper.ILLookupKey{ OpCode = OpCodes.Bge_Un },
-			},
-			old_body =>
-			{
-				Func<double, double, bool> check_need_rounding_error = CheckNeedRoundingError;
-				var a = old_body.ToArray();
-				return new CodeInstruction[]
-				{
-						a[0], a[1],
-						a[4], a[5],
-						new CodeInstruction(OpCodes.Call, check_need_rounding_error.Method),
-						new CodeInstruction(OpCodes.Ldc_I4_1),
-						a[7], new CodeInstruction(OpCodes.Nop),
-				};
-			},
-			1..1
-		);//.ToArray();
-		  //for (var ind=0; ind<res.Length; ind++)
-		  //	log.LogInfo($"[{ind}] {res[ind].opcode}: {res[ind].operand}");
-		return res;
-	}
-
-}
-
 
 
