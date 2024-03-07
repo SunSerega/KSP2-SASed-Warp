@@ -5,7 +5,7 @@ env:
   SPACEDOCK_MOD_URL: "https://spacedock.info/mod/3538/SASed%20Warp"
   FORUM_TOPIC_URL: "https://forum.kerbalspaceprogram.com/topic/222674-sased-warp/"
   FORUM_TOPIC_TITLE: "SASed Warp [v{version} for KSP2 v{ksp2_version}]"
-  DISCORD_MOD_THREAD_ID: "1234..." # The thread ID of the mod's Discord post
+  DISCORD_MOD_THREAD_ID: "1215392254462529596"
   DISCORD_USERNAME: "SASed Warp reporter bot"
   DISCORD_AVATAR_URL: "https://raw.githubusercontent.com/SunSerega/KSP2-SASed-Warp/main/plugin_template/assets/images/icon.png"
 
