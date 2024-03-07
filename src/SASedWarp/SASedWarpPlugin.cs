@@ -1,14 +1,15 @@
-using System.Reflection;
 using BepInEx;
+using HarmonyLib;
 using JetBrains.Annotations;
+using KSP.UI.Binding;
 using SpaceWarp;
 using SpaceWarp.API.Assets;
 using SpaceWarp.API.Mods;
+using SpaceWarp.API.Game;
+using SpaceWarp.API.Game.Extensions;
+using SpaceWarp.API.UI;
 using SpaceWarp.API.UI.Appbar;
-using SASedWarp.UI;
-using UitkForKsp2.API;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 namespace SASedWarp;
 
@@ -21,13 +22,17 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
     [PublicAPI] public const string ModName = MyPluginInfo.PLUGIN_NAME;
     [PublicAPI] public const string ModVer = MyPluginInfo.PLUGIN_VERSION;
 
-    /// Singleton instance of the plugin class
+    // Singleton instance of the plugin class
     [PublicAPI] public static SASedWarpPlugin Instance { get; set; }
 
+    // UI window state
+    private bool _isWindowOpen;
+    private Rect _windowRect;
+
     // AppBar button IDs
-    internal const string ToolbarFlightButtonID = "BTN-SASedWarpFlight";
-    internal const string ToolbarOabButtonID = "BTN-SASedWarpOAB";
-    internal const string ToolbarKscButtonID = "BTN-SASedWarpKSC";
+    private const string ToolbarFlightButtonID = "BTN-SASedWarpFlight";
+    private const string ToolbarOabButtonID = "BTN-SASedWarpOAB";
+    private const string ToolbarKscButtonID = "BTN-SASedWarpKSC";
 
     /// <summary>
     /// Runs when the mod is first initialized.
@@ -38,52 +43,16 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
 
         Instance = this;
 
-        // Load all the other assemblies used by this mod
-        LoadAssemblies();
-
-        // Load the UI from the asset bundle
-        var myFirstWindowUxml = AssetManager.GetAsset<VisualTreeAsset>(
-            // The case-insensitive path to the asset in the bundle is composed of:
-            // - The mod GUID:
-            $"{ModGuid}/" +
-            // - The name of the asset bundle:
-            "SASedWarp_ui/" +
-            // - The path to the asset in your Unity project (without the "Assets/" part)
-            "ui/myfirstwindow/myfirstwindow.uxml"
-        );
-
-        // Create the window options object
-        var windowOptions = new WindowOptions
-        {
-            // The ID of the window. It should be unique to your mod.
-            WindowId = "SASedWarp_MyFirstWindow",
-            // The transform of parent game object of the window.
-            // If null, it will be created under the main canvas.
-            Parent = null,
-            // Whether or not the window can be hidden with F2.
-            IsHidingEnabled = true,
-            // Whether to disable game input when typing into text fields.
-            DisableGameInputForTextFields = true,
-            MoveOptions = new MoveOptions
-            {
-                // Whether or not the window can be moved by dragging.
-                IsMovingEnabled = true,
-                // Whether or not the window can only be moved within the screen bounds.
-                CheckScreenBounds = true
-            }
-        };
-
-        // Create the window
-        var myFirstWindow = Window.Create(windowOptions, myFirstWindowUxml);
-        // Add a controller for the UI to the window's game object
-        var myFirstWindowController = myFirstWindow.gameObject.AddComponent<MyFirstWindowController>();
-
         // Register Flight AppBar button
         Appbar.RegisterAppButton(
             ModName,
             ToolbarFlightButtonID,
             AssetManager.GetAsset<Texture2D>($"{ModGuid}/images/icon.png"),
-            isOpen => myFirstWindowController.IsWindowOpen = isOpen
+            isOpen =>
+            {
+                _isWindowOpen = isOpen;
+                GameObject.Find(ToolbarFlightButtonID)?.GetComponent<UIValue_WriteBool_Toggle>()?.SetValue(isOpen);
+            }
         );
 
         // Register OAB AppBar Button
@@ -91,7 +60,11 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
             ModName,
             ToolbarOabButtonID,
             AssetManager.GetAsset<Texture2D>($"{ModGuid}/images/icon.png"),
-            isOpen => myFirstWindowController.IsWindowOpen = isOpen
+            isOpen =>
+            {
+                _isWindowOpen = isOpen;
+                GameObject.Find(ToolbarOabButtonID)?.GetComponent<UIValue_WriteBool_Toggle>()?.SetValue(isOpen);
+            }
         );
 
         // Register KSC AppBar Button
@@ -99,19 +72,64 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
             ModName,
             ToolbarKscButtonID,
             AssetManager.GetAsset<Texture2D>($"{ModGuid}/images/icon.png"),
-            () => myFirstWindowController.IsWindowOpen = !myFirstWindowController.IsWindowOpen
+            () =>
+            {
+                _isWindowOpen = !_isWindowOpen;
+            }
         );
+
+        // Register all Harmony patches in the project
+        Harmony.CreateAndPatchAll(typeof(SASedWarpPlugin).Assembly);
+
+        // Try to get the currently active vessel, set its throttle to 100% and toggle on the landing gear
+        try
+        {
+            var currentVessel = Vehicle.ActiveVesselVehicle;
+            if (currentVessel != null)
+            {
+                currentVessel.SetMainThrottle(1.0f);
+                currentVessel.SetGearState(true);
+            }
+        }
+        catch (Exception){}
+
+        // Fetch a configuration value or create a default one if it does not exist
+        const string defaultValue = "my default value";
+        var configValue = Config.Bind<string>("Settings section", "Option 1", defaultValue, "Option description");
+
+        // Log the config value into <KSP2 Root>/BepInEx/LogOutput.log
+        Logger.LogInfo($"Option 1: {configValue.Value}");
     }
 
     /// <summary>
-    /// Loads all the assemblies for the mod.
+    /// Draws a simple UI window when <code>this._isWindowOpen</code> is set to <code>true</code>.
     /// </summary>
-    private static void LoadAssemblies()
+    private void OnGUI()
     {
-        // Load the Unity project assembly
-        var currentFolder = new FileInfo(Assembly.GetExecutingAssembly().Location).Directory!.FullName;
-        var unityAssembly = Assembly.LoadFrom(Path.Combine(currentFolder, "SASedWarp.Unity.dll"));
-        // Register any custom UI controls from the loaded assembly
-        CustomControls.RegisterFromAssembly(unityAssembly);
+        // Set the UI
+        GUI.skin = Skins.ConsoleSkin;
+
+        if (_isWindowOpen)
+        {
+            _windowRect = GUILayout.Window(
+                GUIUtility.GetControlID(FocusType.Passive),
+                _windowRect,
+                FillWindow,
+                "SASed Warp",
+                GUILayout.Height(350),
+                GUILayout.Width(350)
+            );
+        }
+    }
+
+    /// <summary>
+    /// Defines the content of the UI window drawn in the <code>OnGui</code> method.
+    /// </summary>
+    /// <param name="windowID"></param>
+    private static void FillWindow(int windowID)
+    {
+        GUILayout.Label("SASed Warp - SAS locking during warp (+ thrust on rails fix)");
+        GUI.DragWindow(new Rect(0, 0, 10000, 500));
     }
 }
+
