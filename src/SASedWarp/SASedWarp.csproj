@@ -1,4 +1,7 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+
+
 <Project Sdk="Microsoft.NET.Sdk">
     <!-- Project references -->
     <ItemGroup Label="DLL file references">
@@ -16,4 +19,5 @@
         <PackageReference Include="UnityEngine.Modules" Version="2022.3.5"/>
     </ItemGroup>
 </Project>
+
 

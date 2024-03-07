@@ -1,16 +1,14 @@
+
+
+
 # General C# project
 *.suo
 *.user
-.vs/
-[Bb]in/
-[Oo]bj/
-_UpgradeReport_Files/
-/[Pp]ackages/
+/.vs/
 
 # Mod template folders
-/[Bb]uild/
-/[Dd]ist/
-/[Nn]uget/
+/build/
+/dist/
 
 # Rider
 
@@ -49,3 +47,5 @@ _UpgradeReport_Files/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+

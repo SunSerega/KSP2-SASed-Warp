@@ -1,23 +1,23 @@
-{
-  "spec": "2.0",
-  "mod_id": "SASedWarp",
-  "author": "Sun Serega",
-  "name": "SASed Warp",
-  "description": "SAS locking during warp (+ thrust on rails fix)",
-  "source": "https://github.com/SunSerega/KSP2-SASed-Warp",
-  "version": "1.0.0",
-  "version_check": "",
-  "ksp2_version": {
-    "min": "0.2.0",
-    "max": "*"
-  },
-  "dependencies": [
-    {
-      "id": "com.github.x606.spacewarp",
-      "version": {
-        "min": "1.8.0",
-        "max": "*"
-      }
-    }
-  ]
+﻿{
+	"spec": "2.0",
+	"mod_id": "SASedWarp",
+	"author": "Sun Serega",
+	"name": "SASed Warp",
+	"description": "SAS locking during warp (+ thrust on rails fix)",
+	"source": "https://github.com/SunSerega/KSP2-SASed-Warp",
+	"version": "2.2",
+	"version_check": "https://raw.githubusercontent.com/SunSerega/KSP2-SASed-Warp/main/plugin_template/swinfo.json",
+	"ksp2_version": {
+		"min": "0.2.1",
+		"max": "*"
+	},
+	"dependencies": [
+		{
+			"id": "com.github.x606.spacewarp",
+			"version": {
+				"min": "1.9.4",
+				"max": "*"
+			}
+		}
+	]
 }
