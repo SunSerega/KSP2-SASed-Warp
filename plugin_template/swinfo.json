@@ -8,14 +8,14 @@
   "version": "1.0.0",
   "version_check": "",
   "ksp2_version": {
-    "min": "0.2.0",
+    "min": "0.2.1",
     "max": "*"
   },
   "dependencies": [
     {
       "id": "com.github.x606.spacewarp",
       "version": {
-        "min": "1.8.0",
+        "min": "1.9.0",
         "max": "*"
       }
     }
