@@ -18,18 +18,21 @@ jobs:
         run: dotnet build "SASedWarp.sln" -c Release
       
       - name: Verify swinfo.json
-        uses: johnstonmatt/is-valid-json-action@main
+        uses: actions/github-script@main
         with:
-          path-to-file: './plugin_template/swinfo.json'
-      
+          script: |
+          
+            const swinfo = JSON.parse(require('fs').readFileSync('./plugin_template/swinfo.json'));
+            
       - name: Find zip
         id: find-zip
         run: |
+        
           echo "zip=$(ls -1 dist/SASedWarp-*.zip | head -n 1)" >> $GITHUB_ENV
           echo "artifact_name=SASedWarpRelease" >> $GITHUB_ENV
-      
+          
       - name: Upload zip artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@main
         with:
           name: ${{ env.artifact_name }}
           path: ${{ env.zip }}

@@ -1,0 +1,82 @@
+﻿name: Update template
+
+on:
+  push:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-template:
+    runs-on: ubuntu-latest
+    steps:
+      
+      - name: config
+        run: |
+        
+          git config --global core.autocrlf false
+          git config --global user.name "template updater bot"
+          git config --global user.email "sunserega2@gmail.com"
+          git config --global --add url.https://github.com/.insteadOf "git@github.com:"
+          
+      - name: Checkout
+        uses: actions/checkout@main
+        with:
+          fetch-depth: 0
+          ref: template
+          lfs: true
+          
+      - name: Replace raw template
+        run: |
+        
+          # Remove all non-hidden items (only keeps .git folder)
+          rm -rf *
+          
+          # Recreate raw template with all the parameters
+          dotnet new install SpaceWarp.Template
+          dotnet new spacewarpmod-general -n "SASedWarp" -M "SASed Warp" -A "Sun Serega" -D "SAS locking during warp (+ thrust on rails fix)" -S "https://github.com/SunSerega/KSP2-SASed-Warp" -V "1.0.0"
+          
+          # Move into the recreated raw template
+          mv .git ./SASedWarp/
+          cd ./SASedWarp
+          
+          # Fix GUIDs in sln
+          sln_fname='SASedWarp.sln'
+          echo "=== SLN ==="
+          cat $sln_fname
+          echo "==========="
+          new_guid_regex='Project\(\"(\{([0-9A-F]+-?)+\})\"\) = \"SASedWarp\", \"src\/SASedWarp\/SASedWarp\.csproj\", \"(\{([0-9A-F]+-?)+\})\"'
+          if ! [[ $(cat $sln_fname) =~ $new_guid_regex ]]; then
+            echo "GUID string was not found"
+            exit 1
+          fi
+          sed -i "s/${BASH_REMATCH[1]}/{C66BBBF4-1899-4B48-A7AA-4778247D8F0F}/g" $sln_fname
+          sed -i "s/${BASH_REMATCH[3]}/{624CD2C8-30A9-4E6D-807E-3D18FE999CF0}/g" $sln_fname
+          cat $sln_fname
+          echo "==========="
+          
+          # Push the diff
+          git add .
+          git commit -m "Update template" || true
+          git push
+          
+          # Try merge the changed template into main
+          git checkout origin/main
+          git checkout -B "merged/main"
+          git merge template
+          
+          main_sha=$(git rev-parse origin/main)
+          head_sha=$(git rev-parse HEAD)
+          echo "main: $main_sha"
+          echo "head: $head_sha"
+          if [ "$main_sha" == "$head_sha" ]; then
+            echo "no changes relative to main"
+            git push origin --delete merged/main || true
+          else
+            echo "changes relative to main, pushing to merged/main"
+            git push -f --set-upstream origin merged/main
+          fi
+          
