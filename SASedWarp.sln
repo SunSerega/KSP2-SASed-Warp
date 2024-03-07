@@ -1,0 +1,34 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{6098BE98-3710-458B-A99C-B0374F51D92B}") = "SASedWarp", "src/SASedWarp/SASedWarp.csproj", "{BDB81F11-D146-4F6E-8500-62EE805E5117}"
+EndProject
+Project("{6098BE98-3710-458B-A99C-B0374F51D92B}") = "SASedWarp.Unity", "src/SASedWarp.Unity/SASedWarp.Unity.csproj", "{A24F3BA7-1DF3-4835-AE5A-9ED586AD312B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+		Deploy|Any CPU = Deploy|Any CPU
+		DeployAndRun|Any CPU = DeployAndRun|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BDB81F11-D146-4F6E-8500-62EE805E5117}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDB81F11-D146-4F6E-8500-62EE805E5117}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDB81F11-D146-4F6E-8500-62EE805E5117}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDB81F11-D146-4F6E-8500-62EE805E5117}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BDB81F11-D146-4F6E-8500-62EE805E5117}.Deploy|Any CPU.ActiveCfg = Deploy|Any CPU
+		{BDB81F11-D146-4F6E-8500-62EE805E5117}.Deploy|Any CPU.Build.0 = Deploy|Any CPU
+		{BDB81F11-D146-4F6E-8500-62EE805E5117}.DeployAndRun|Any CPU.ActiveCfg = DeployAndRun|Any CPU
+		{BDB81F11-D146-4F6E-8500-62EE805E5117}.DeployAndRun|Any CPU.Build.0 = DeployAndRun|Any CPU
+		{A24F3BA7-1DF3-4835-AE5A-9ED586AD312B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A24F3BA7-1DF3-4835-AE5A-9ED586AD312B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A24F3BA7-1DF3-4835-AE5A-9ED586AD312B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A24F3BA7-1DF3-4835-AE5A-9ED586AD312B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A24F3BA7-1DF3-4835-AE5A-9ED586AD312B}.Deploy|Any CPU.ActiveCfg = Deploy|Any CPU
+		{A24F3BA7-1DF3-4835-AE5A-9ED586AD312B}.Deploy|Any CPU.Build.0 = Deploy|Any CPU
+		{A24F3BA7-1DF3-4835-AE5A-9ED586AD312B}.DeployAndRun|Any CPU.ActiveCfg = DeployAndRun|Any CPU
+		{A24F3BA7-1DF3-4835-AE5A-9ED586AD312B}.DeployAndRun|Any CPU.Build.0 = DeployAndRun|Any CPU
+	EndGlobalSection
+EndGlobal
+
+
