@@ -1,0 +1,36 @@
+﻿name: Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@main
+        with:
+          lfs: true
+      
+      - name: Build the solution
+        run: dotnet build "SASedWarp.sln" -c Release
+      
+      - name: Verify swinfo.json
+        uses: johnstonmatt/is-valid-json-action@main
+        with:
+          path-to-file: './plugin_template/swinfo.json'
+      
+      - name: Find zip
+        id: find-zip
+        run: |
+          echo "zip=$(ls -1 dist/SASedWarp-*.zip | head -n 1)" >> $GITHUB_ENV
+          echo "artifact_name=SASedWarpRelease" >> $GITHUB_ENV
+      
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.artifact_name }}
+          path: ${{ env.zip }}
+      
