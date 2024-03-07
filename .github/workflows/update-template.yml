@@ -28,6 +28,7 @@ jobs:
           fetch-depth: 0
           ref: template
           lfs: true
+          token: ${{ secrets.WORKFLOW_TOKEN }}
           
       - name: Replace raw template
         run: |
