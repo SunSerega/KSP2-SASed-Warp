@@ -22,6 +22,9 @@
         <Reference Include="Assembly-CSharp">
             <HintPath>$(KSP2DIR)\KSP2_x64_Data\Managed\Assembly-CSharp.dll</HintPath>
         </Reference>
+        <Reference Include="ShapesRuntime">
+            <HintPath>$(KSP2DIR)\KSP2_x64_Data\Managed\ShapesRuntime.dll</HintPath>
+        </Reference>
     </ItemGroup>
     <ItemGroup Condition="$(ConfigurationName) == 'Release'">
         <PackageReference Include="KerbalSpaceProgram2.GameLibs" Version="0.2.1" PrivateAssets="all" Publicize="true"/>
