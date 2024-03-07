@@ -5,7 +5,7 @@
 	"name": "SASed Warp",
 	"description": "SAS locking during warp (+ thrust on rails fix)",
 	"source": "https://github.com/SunSerega/KSP2-SASed-Warp",
-	"version": "2.2",
+	"version": "2.2.1",
 	"version_check": "https://raw.githubusercontent.com/SunSerega/KSP2-SASed-Warp/main/plugin_template/swinfo.json",
 	"ksp2_version": {
 		"min": "0.2.1",
