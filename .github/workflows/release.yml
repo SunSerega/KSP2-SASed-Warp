@@ -85,7 +85,6 @@ jobs:
           password: ${{ secrets.KSP_FORUM_PASSWORD }}
           forum_topic_url: ${{ env.FORUM_TOPIC_URL }}
           forum_topic_title: ${{ env.FORUM_TOPIC_TITLE }}
-          spacedock_url: ${{ env.SPACEDOCK_MOD_URL}}
           version: ${{ env.version }}
           changelog: ./changelog.md
       
