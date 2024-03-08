@@ -49,6 +49,7 @@ jobs:
       
       - name: Upload zip to release
         if: steps.get-version.outcome == 'success'
+        continue-on-error: true
         uses: shogo82148/actions-upload-release-asset@v1.7.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -62,6 +63,7 @@ jobs:
       
       - name: Update mod on SpaceDock
         if: steps.get-version.outcome == 'success'
+        continue-on-error: true
         uses: KSP2Community/spacedock-upload@v1.0.0
         with:
           username: ${{ secrets.SPACEDOCK_USER }}
@@ -76,6 +78,7 @@ jobs:
       
       - name: Update Forum topic
         if: steps.get-version.outcome == 'success'
+        continue-on-error: true
         uses: Kerbalight/ksp2-forum-post-action@latest
         with:
           username: ${{ secrets.KSP_FORUM_USERNAME }}
@@ -90,6 +93,7 @@ jobs:
       
       - name: Prepare message for Discord
         if: steps.get-version.outcome == 'success'
+        continue-on-error: true
         id: discord-prepare
         shell: bash
         run: |
@@ -103,6 +107,7 @@ jobs:
       
       - name: Publish update to Discord
         if: steps.discord-prepare.outcome == 'success'
+        continue-on-error: true
         uses: tsickert/discord-webhook@v5.3.0
         with:
           webhook-url: ${{ secrets.DISCORD_KMS_WEBHOOK_URL }}
