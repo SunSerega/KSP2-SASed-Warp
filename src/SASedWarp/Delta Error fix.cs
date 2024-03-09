@@ -82,32 +82,31 @@ public static class VesselComponent_HandleOrbitalPhysicsUnderThrustStart_Patch
 		var prop_get_sqrMagnitude = typeof(Vector3d).GetProperty("sqrMagnitude").GetGetMethod();
 		var res = TranspilerHelper.Replace(old_body,
 			[
-					new() { OpCode = OpCodes.Ldloca_S },
-					new() { OpCode = OpCodes.Call, Operand = prop_get_sqrMagnitude },
-					new() { OpCode = OpCodes.Ldc_R8 },
-					new() { OpCode = OpCodes.Bge_Un },
-					new() { OpCode = OpCodes.Ldloca_S },
-					new() { OpCode = OpCodes.Call, Operand = prop_get_sqrMagnitude },
-					new() { OpCode = OpCodes.Ldc_R8 },
-					new() { OpCode = OpCodes.Bge_Un },
+				new() { OpCode = OpCodes.Ldloca_S },
+				new() { OpCode = OpCodes.Call, Operand = prop_get_sqrMagnitude },
+				new() { OpCode = OpCodes.Ldc_R8 },
+				new() { OpCode = OpCodes.Bge_Un },
+				new() { OpCode = OpCodes.Ldloca_S },
+				new() { OpCode = OpCodes.Call, Operand = prop_get_sqrMagnitude },
+				new() { OpCode = OpCodes.Ldc_R8 },
+				new() { OpCode = OpCodes.Bge_Un },
 			],
 			old_body =>
 			{
 				Func<double, double, bool> check_need_rounding_error = CheckNeedRoundingError;
 				var a = old_body.ToArray();
-				return
-				[
-						a[0], a[1],
-						a[4], a[5],
-						new(OpCodes.Call, check_need_rounding_error.Method),
-						new(OpCodes.Ldc_I4_1),
-						a[7], new(OpCodes.Nop),
+				return [
+					a[0], a[1],
+					a[4], a[5],
+					new(OpCodes.Call, check_need_rounding_error.Method),
+					new(OpCodes.Ldc_I4_1),
+					a[7], new(OpCodes.Nop),
 				];
 			},
 			1..1
 		);//.ToArray();
-		  //for (var ind=0; ind<res.Length; ind++)
-		  //	log.LogInfo($"[{ind}] {res[ind].opcode}: {res[ind].operand}");
+		//for (var ind=0; ind<res.Length; ind++)
+		//	log.LogInfo($"[{ind}] {res[ind].opcode}: {res[ind].operand}");
 		return res;
 	}
 
