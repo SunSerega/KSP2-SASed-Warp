@@ -154,9 +154,20 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
 			//Shapes.DrawCommand.OnPostRenderBuiltInRP(cam);
 
 		};
-		
-		Harmony.CreateAndPatchAll(typeof(SASedWarpPlugin).Assembly);
 
+		if (ModVerAtLeast("CommunityFixes", new(0, 13)))
+			Logger.LogInfo($"CommunityFixes >=0.13 found, skipping \"Delta error\" fix");
+		else
+		{
+			Harmony.CreateAndPatchAll(typeof(VesselComponent_HandleOrbitalPhysicsUnderThrustStart_Patch));
+			Logger.LogInfo($"Patching \"Delta error\" fix");
+		}
+
+	}
+
+	private static bool ModVerAtLeast(string mod_name, Version ver)
+	{
+		return PluginList.IsLoaded(mod_name) && PluginList.CompareVersion(mod_name, ver) >= 0;
 	}
 
 	#endregion
