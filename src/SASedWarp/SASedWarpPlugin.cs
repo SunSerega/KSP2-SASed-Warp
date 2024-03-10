@@ -38,14 +38,20 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
 	private const string ToolbarFlightButtonID = "BTN-SASedWarpFlight";
 
 	private bool in_valid_game_state = false;
-	private bool menu_active = false;
 
-	private readonly ConfigEntry<bool> c_direction_lines, c_h_to_snap;
+	private readonly ConfigEntry<bool> c_sased_warp_on, c_direction_lines, c_h_to_snap;
 
 	#region Init
 
 	public SASedWarpPlugin()
 	{
+		c_sased_warp_on = Config.Bind(
+			MyPluginInfo.PLUGIN_NAME,
+			"SASed Warp",
+			false,
+			"If on, your vessel will rotate towards SAS direction during warp\n"+
+			"You can switch this on/off by pressing AppBar icon"
+		);
 		c_direction_lines = Config.Bind(
 			MyPluginInfo.PLUGIN_NAME,
 			"Funny debug lines",
@@ -69,9 +75,12 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
 
 		#region GameStateChangedMessage=>in_valid_game_state
 
+		// GameStateEnteredMessage
 		Game.Messages.Subscribe<GameStateChangedMessage>(msg =>
 		{
 			var message = (GameStateChangedMessage)msg;
+			//Logger.LogDebug($"new state: {message.StateBeingEntered}");
+			//Logger.LogDebug($"{message.PreviousState} => {message.CurrentState}");
 
 			in_valid_game_state = message.CurrentState switch
 			{
@@ -99,6 +108,17 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
 
 				_ => throw new NotImplementedException(message.CurrentState.ToString()),
 			};
+
+			/**
+			if (in_valid_game_state)
+			{
+				Logger.LogDebug("Setting SASedWarp button state");
+				Logger.LogDebug(UnityEngine.GameObject.Find(ToolbarFlightButtonID)?.ToString() ?? "<null>");
+				Logger.LogDebug(UnityEngine.GameObject.Find(ToolbarFlightButtonID).GetComponent<KSP.UI.Binding.UIValue_WriteBool_Toggle>()?.ToString() ?? "<null>");
+				UnityEngine.GameObject.Find(ToolbarFlightButtonID)!.GetComponent<KSP.UI.Binding.UIValue_WriteBool_Toggle>()!.SetValue(c_sased_warp_on.Value);
+			}
+			/**/
+
 		});
 
 		#endregion
@@ -108,14 +128,14 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
 			ModName,
 			ToolbarFlightButtonID,
 			AssetManager.GetAsset<UnityEngine.Texture2D>($"{ModGuid}/images/icon.png"),
-			is_open => menu_active = is_open
+			is_open => c_sased_warp_on.Value = is_open
 		);
 
 		UnityEngine.Camera.onPreRender += cam =>
 		{
 			if (!c_direction_lines.Value) return;
 			if (!in_valid_game_state) return;
-			if (!menu_active) return;
+			if (!c_sased_warp_on.Value) return;
 
 			using var c = Shapes.Draw.Command(cam, UnityEngine.Rendering.CameraEvent.AfterImageEffectsOpaque);
 
@@ -148,7 +168,7 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
 		{
 			if (!c_direction_lines.Value) return;
 			if (!in_valid_game_state) return;
-			if (!menu_active) return;
+			if (!c_sased_warp_on.Value) return;
 
 			// HUD (the mod) used this, but it's private
 			//Shapes.DrawCommand.OnPostRenderBuiltInRP(cam);
@@ -181,6 +201,9 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
 	public void Update()
 	{
 
+		//TODO Move to special message with SpaceWarp updates
+		UnityEngine.GameObject.Find(ToolbarFlightButtonID)?.GetComponent<KSP.UI.Binding.UIValue_WriteBool_Toggle>()?.SetValue(c_sased_warp_on.Value);
+
 		#region Checks and init
 
 		var old_h_down = h_down;
@@ -191,7 +214,7 @@ public class SASedWarpPlugin : BaseSpaceWarpPlugin
 		}
 
 		if (!in_valid_game_state) return;
-		if (!menu_active) return;
+		if (!c_sased_warp_on.Value) return;
 		if (!GameManager.Instance.Game.ViewController.TimeWarp.IsWarping) return;
 		if (GameManager.Instance.Game.ViewController.TimeWarp.IsPhysicsTimeWarp) return;
 		var vessel = GameManager.Instance.Game.ViewController.GetActiveSimVessel(true);
